@@ -7,7 +7,7 @@ latent_units = 30
 ## 训练设置
 
 cnt_epoch = 128
-batch_size = 32
+batch_size = 512
 learning_rate = 0.001
 
 log_every = 8

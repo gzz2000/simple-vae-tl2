@@ -2,6 +2,7 @@ import tensorlayer as tl
 import tensorflow as tf
 import numpy as np
 import config
+import os
 from model import build
 from data import enum_train, cnt_train, enum_val, cnt_val, gray2rgb, with_progress
 
