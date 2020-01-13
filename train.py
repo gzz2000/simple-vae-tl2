@@ -3,9 +3,9 @@ import tensorflow as tf
 import numpy as np
 import config
 from model import build
-from data import enum_train, cnt_train, enum_val, cnt_val, gray2rgb
+from data import enum_train, cnt_train, enum_val, cnt_val, gray2rgb, with_progress
 
-model_train, model_encoder, model_decoder = build(784, config.hidden_units, config.latent_units)
+model_encoder, model_decoder, model_train = build(784, config.hidden_units, config.latent_units)
 optimizer = tf.optimizers.Adam(learning_rate = config.learning_rate)
 
 tl.files.exists_or_mkdir(config.save_snapshot_to)
@@ -13,10 +13,10 @@ tl.files.exists_or_mkdir(config.save_visualization_to)
 writer = tf.summary.create_file_writer(config.save_logs_to)
 
 def l2_loss(x, y):
-    return tf.reduce_sum(tf.losses.binary_crossentropy(x, y))
+    return tf.reduce_mean(tf.losses.binary_crossentropy(x, y))
 
 def kl_loss(mean, logstdev):
-    return -0.5 * tf.reduce_sum(1 + logstdev - tf.exp(logstdev) - mean ** 2)
+    return -0.5 * tf.reduce_mean(1 + logstdev - tf.exp(logstdev) - mean ** 2)
 
 for epoch in range(config.cnt_epoch):
     print('Epoch %d/%d' % (epoch, config.cnt_epoch))
@@ -24,15 +24,15 @@ for epoch in range(config.cnt_epoch):
 
     model_train.train()
     loss_kl_sum, loss_l2_sum, loss_sum = 0, 0, 0
-    for inputs in enum_train():
+    for inputs in with_progress(enum_train(config.batch_size), cnt_train):
         z0 = np.random.normal(0.0, 1.0, (inputs.shape[0], config.latent_units)).astype(np.float32)
         with tf.GradientTape() as tape:
             mean, logvar, outputs = model_train([inputs, z0])
             loss_kl = kl_loss(mean, logvar)
             loss_l2 = l2_loss(inputs, outputs)
-            loss = loss_kl + loss_l2
-        grad = tape.gradient(loss, model.trainable_weights)
-        optimizer.apply_gradients(zip(grad, model.trainable_weights))
+            loss = 0.1 * loss_kl + loss_l2
+        grad = tape.gradient(loss, model_train.trainable_weights)
+        optimizer.apply_gradients(zip(grad, model_train.trainable_weights))
 
         loss_kl_sum += loss_kl * inputs.shape[0] / cnt_train
         loss_l2_sum += loss_l2 * inputs.shape[0] / cnt_train
@@ -46,16 +46,16 @@ for epoch in range(config.cnt_epoch):
 
     model_train.eval()
     loss_kl_sum, loss_l2_sum, loss_sum = 0, 0, 0
-    for inputs in enum_train():
+    for inputs in with_progress(enum_val(config.batch_size), cnt_val):
         z0 = np.random.normal(0.0, 1.0, (inputs.shape[0], config.latent_units)).astype(np.float32)
         mean, logvar, outputs = model_train([inputs, z0])
         loss_kl = kl_loss(mean, logvar)
         loss_l2 = l2_loss(inputs, outputs)
-        loss = loss_kl + loss_l2
+        loss = 0.1 * loss_kl + loss_l2
 
-        loss_kl_sum += loss_kl * inputs.shape[0] / cnt_train
-        loss_l2_sum += loss_l2 * inputs.shape[0] / cnt_train
-        loss_sum += loss * inputs.shape[0] / cnt_train
+        loss_kl_sum += loss_kl * inputs.shape[0] / cnt_val
+        loss_l2_sum += loss_l2 * inputs.shape[0] / cnt_val
+        loss_sum += loss * inputs.shape[0] / cnt_val
 
     with writer.as_default():
         tf.summary.scalar('val_loss_kl', loss_kl_sum)

@@ -1,5 +1,6 @@
 import tensorflow as tf
 import tensorlayer as tl
+from tensorlayer.layers import *
 
 def build_encoder(origin_units, hidden_units, latent_units):
     init = tf.initializers.he_uniform()

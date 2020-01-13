@@ -1,6 +1,7 @@
 import tensorlayer as tl
 import tensorflow as tf
 import numpy as np
+from tqdm import tqdm
 
 X_train, y_train, X_val, y_val, X_test, y_test = tl.files.load_mnist_dataset(shape = (-1, 784))
 
@@ -19,3 +20,9 @@ def enum_val(batch_size):
 
 def gray2rgb(im):
     return np.stack([im, im, im], axis = 3)
+
+def with_progress(gen, cnt):
+    with tqdm(total = cnt) as pbar:
+        for x in gen:
+            yield x
+            pbar.update(x.shape[0])
