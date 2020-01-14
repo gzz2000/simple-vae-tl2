@@ -6,7 +6,7 @@ import os
 from model import build
 from data import enum_train, cnt_train, enum_val, cnt_val, gray2rgb, with_progress
 
-model_encoder, model_decoder, model_train = build(784, config.hidden_units, config.latent_units)
+model_encoder, model_decoder = build(784, config.hidden_units, config.latent_units)
 optimizer = tf.optimizers.Adam(learning_rate = config.learning_rate)
 
 tl.files.exists_or_mkdir(config.save_snapshot_to)
@@ -26,14 +26,16 @@ for epoch in range(config.cnt_epoch):
     model_train.train()
     loss_kl_sum, loss_l2_sum, loss_sum = 0, 0, 0
     for inputs in with_progress(enum_train(config.batch_size), cnt_train):
-        z0 = np.random.normal(0.0, 1.0, (inputs.shape[0], config.latent_units)).astype(np.float32)
+        z0 = tf.convert_to_tensor(np.random.normal(0.0, 1.0, (inputs.shape[0], config.latent_units)).astype(np.float32))
         with tf.GradientTape() as tape:
-            mean, logvar, outputs = model_train([inputs, z0])
+            mean, logvar = model_encoder(inputs)
+            z = mean + z0 * tf.exp(0.5 * logvar)
+            outputs = model_decoder(z)
             loss_kl = kl_loss(mean, logvar)
             loss_l2 = l2_loss(inputs, outputs)
             loss = loss_kl + loss_l2
-        grad = tape.gradient(loss, model_train.trainable_weights)
-        optimizer.apply_gradients(zip(grad, model_train.trainable_weights))
+        grad = tape.gradient(loss, model_encoder.trainable_weights + model_decoder.trainable_weights)
+        optimizer.apply_gradients(zip(grad, model_encoder.trainable_weights + model_decoder.trainable_weights))
 
         loss_kl_sum += loss_kl * inputs.shape[0] / cnt_train
         loss_l2_sum += loss_l2 * inputs.shape[0] / cnt_train
@@ -48,8 +50,10 @@ for epoch in range(config.cnt_epoch):
     model_train.eval()
     loss_kl_sum, loss_l2_sum, loss_sum = 0, 0, 0
     for inputs in with_progress(enum_val(config.batch_size), cnt_val):
-        z0 = np.random.normal(0.0, 1.0, (inputs.shape[0], config.latent_units)).astype(np.float32)
-        mean, logvar, outputs = model_train([inputs, z0])
+        z0 = tf.convert_to_tensor(np.random.normal(0.0, 1.0, (inputs.shape[0], config.latent_units)).astype(np.float32))
+        mean, logvar = model_encoder(inputs)
+        z = mean + z0 * tf.exp(0.5 * logvar)
+        outputs = model_decoder(z)
         loss_kl = kl_loss(mean, logvar)
         loss_l2 = l2_loss(inputs, outputs)
         loss = loss_kl + loss_l2

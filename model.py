@@ -20,15 +20,4 @@ def build_decoder(origin_units, hidden_units, latent_units):
 def build(origin_units, hidden_units, latent_units):
     encoder = build_encoder(origin_units, hidden_units, latent_units)
     decoder = build_decoder(origin_units, hidden_units, latent_units)
-    def build_train_model():
-        ni = Input((None, origin_units))
-        z0 = Input((None, latent_units))
-        mean, logvar = encoder.as_layer()(ni)
-        def sample(data):
-            z0, mean, logvar = data
-            return mean + z0 * tf.exp(0.5 * logvar)
-        z = Lambda(sample)([z0, mean, logvar])
-        no = decoder.as_layer()(z)
-        return tl.models.Model(inputs = [ni, z0], outputs = [mean, logvar, no])
-    model_train = build_train_model()
-    return encoder, decoder, model_train
+    return encoder, decoder
