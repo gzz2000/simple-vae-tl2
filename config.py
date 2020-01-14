@@ -1,13 +1,13 @@
 
 ## 模型设置
 
-hidden_units = 800
-latent_units = 30
+hidden_units = 128
+latent_units = 100
 
 ## 训练设置
 
 cnt_epoch = 128
-batch_size = 500
+batch_size = 64
 learning_rate = 0.001
 
 log_every = 8

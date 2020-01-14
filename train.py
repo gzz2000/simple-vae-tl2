@@ -14,7 +14,7 @@ tl.files.exists_or_mkdir(config.save_visualization_to)
 writer = tf.summary.create_file_writer(config.save_logs_to)
 
 def l2_loss(x, y):
-    return tf.reduce_mean(tf.losses.binary_crossentropy(x, y))
+    return tf.reduce_sum(tf.losses.binary_crossentropy(x, y))
 
 def kl_loss(mean, logstdev):
     return -0.5 * tf.reduce_mean(1 + logstdev - tf.exp(logstdev) - mean ** 2)
@@ -31,7 +31,7 @@ for epoch in range(config.cnt_epoch):
             mean, logvar, outputs = model_train([inputs, z0])
             loss_kl = kl_loss(mean, logvar)
             loss_l2 = l2_loss(inputs, outputs)
-            loss = 0.1 * loss_kl + loss_l2
+            loss = loss_kl + loss_l2
         grad = tape.gradient(loss, model_train.trainable_weights)
         optimizer.apply_gradients(zip(grad, model_train.trainable_weights))
 
@@ -52,7 +52,7 @@ for epoch in range(config.cnt_epoch):
         mean, logvar, outputs = model_train([inputs, z0])
         loss_kl = kl_loss(mean, logvar)
         loss_l2 = l2_loss(inputs, outputs)
-        loss = 0.1 * loss_kl + loss_l2
+        loss = loss_kl + loss_l2
 
         loss_kl_sum += loss_kl * inputs.shape[0] / cnt_val
         loss_l2_sum += loss_l2 * inputs.shape[0] / cnt_val
